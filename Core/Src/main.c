@@ -48,7 +48,22 @@ CAN_HandleTypeDef hcan2;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
+CAN_TxHeaderTypeDef TxHeader;
 
+CAN_RxHeaderTypeDef RxHeader;
+CAN_FilterTypeDef sFilterConfig;
+
+uint32_t mailbox;
+
+uint16_t MCU_Temp = 0;
+
+uint32_t ADC_Buffer[2] = {0};
+
+uint16_t Tx_Delay = 10; //change this
+uint32_t ms = 0;
+
+uint16_t delay1 = 100;
+uint32_t ms1 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,7 +80,24 @@ static void MX_TIM4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(ms1 >= delay1){
+		MCU_Temp = (uint16_t)((float)ADC_Buffer[1] * 0.322 - 282);	//get the mcu temperature from dma register
+		ms1 = 0;
+	}
+	/*
+  if(ms >= Tx_Delay)
+  {
 
+  }
+	*/
+  if(htim->Instance==TIM4)
+	{
+    ms++;
+		ms1++;
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -102,7 +134,9 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
- __HAL_RCC_CAN1_CLK_ENABLE();
+	__HAL_RCC_CAN1_CLK_ENABLE();
+  HAL_TIM_Base_Start_IT(&htim4);
+	HAL_ADC_Start_DMA(&hadc1, ADC_Buffer, 2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -191,7 +225,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 2;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -202,7 +236,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
