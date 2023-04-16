@@ -22,9 +22,14 @@ software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma_ex.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cortex.h
+software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc.h
+software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_adc.h
+software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc_ex.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_can.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ex.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h
 software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h
+software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h
+software\stm32f4xx_hal_pwr_ex.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h
