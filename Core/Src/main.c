@@ -67,6 +67,12 @@ uint8_t rearSpdDataD  [8] = {0};
 uint8_t strDataD [8] = {0};
 uint8_t voltageDataD [8] = {0};
 
+
+// Converted value variables
+uint8_t spd_front = 0; 		//km/h
+uint8_t spd_rear	= 0; 		//km/h
+uint8_t spd_combined = 0;	//km/h
+
 uint32_t mailbox;
 
 uint16_t MCU_Temp = 0;
@@ -89,6 +95,11 @@ static void MX_CAN2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan);
+
+void convertSpd(uint8_t *spd_val, uint8_t buffer[]);
+
 
 /* USER CODE END PFP */
 
@@ -436,6 +447,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan)
     frontSpdDataD[1] = RxData[5];
 		frontSpdDataD[2] = RxData[6];
     frontSpdDataD[3] = RxData[7];
+		convertSpd(&spd_front, frontSpdDataD);
   }
 	//steering wheel buttons engine off
   else if(RxHeader.StdId == rearSpd_ID)
@@ -456,6 +468,11 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan)
   {
     voltageDataD[0] =RxData[1];
   }
+}
+
+void convertSpd(uint8_t *spd_val, uint8_t* buffer)
+{
+		// WRITE FORMULA FOR CONVERSION
 }
 /* USER CODE END 4 */
 
