@@ -53,26 +53,22 @@ CAN_RxHeaderTypeDef RxHeader;
 CAN_FilterTypeDef sFilterConfig;
 
 // MAIN CAN BUS RX ID'S
-uint32_t frontSpd_ID 	= 0x5F;
-uint32_t rearSpd_ID 	= 0x29A;
-uint32_t steering_ID 	= 0x1A4;
-uint32_t setting_ID 	= 0x4E;
-uint32_t voltage_ID 	= 0xD;
+const uint32_t speed_ID 		= 0x0000;
+const uint32_t steering_ID 	= 0x1A4;
+const uint32_t setting_ID 	= 0x4E;
+const uint32_t voltage_ID 	= 0xD;
 
 // MAIN CAN BUS RX BUFS
 uint8_t RxData  [8] = {0};
 
-uint8_t frontSpdDataD  [8] = {0};
-uint8_t rearSpdDataD  [8] = {0};
+uint8_t speedDataD  [8] = {0};
 uint8_t strDataD [8] = {0};
 uint8_t voltageDataD [8] = {0};
+uint8_t settingDataD [8] = {0};
 
 
 // Converted value variables
-uint8_t spd_front = 0; 		//km/h
-uint8_t spd_rear	= 0; 		//km/h
-uint8_t spd_combined = 0;	//km/h
-
+uint8_t vehicle_spd = 0;	// km/h
 uint32_t mailbox;
 
 uint16_t MCU_Temp = 0;
@@ -439,41 +435,45 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan)
 {
-	//steering wheel potentiometer engine off
+
 	HAL_CAN_GetRxMessage(hcan,CAN_RX_FIFO0,&RxHeader,RxData);
-  if(RxHeader.StdId == frontSpd_ID)
-  {
-    frontSpdDataD[0] = RxData[4];
-    frontSpdDataD[1] = RxData[5];
-		frontSpdDataD[2] = RxData[6];
-    frontSpdDataD[3] = RxData[7];
-		convertSpd(&spd_front, frontSpdDataD);
-  }
-	//steering wheel buttons engine off
-  else if(RxHeader.StdId == rearSpd_ID)
-  {
-    rearSpdDataD[0] = RxData[0];
-    rearSpdDataD[1] = RxData[1];
-		rearSpdDataD[2] = RxData[2];
-    rearSpdDataD[3] = RxData[3];
-  }
-	//steering wheel potentiometer engine on
-  else if(RxHeader.StdId == steering_ID)
-  {
-    strDataD[0] = RxData[1];
-    strDataD[1] = RxData[2];
-  }
-	//steering wheel buttons engine on
-  else if(RxHeader.StdId == voltage_ID)
-  {
-    voltageDataD[0] =RxData[1];
-  }
+	
+	switch (RxHeader.StdId)
+	{
+		case speed_ID:
+			speedDataD[0] = RxData[0];
+			speedDataD[1] = RxData[1];
+			speedDataD[2] = RxData[2];
+			speedDataD[3] = RxData[3];
+			convertSpd(&vehicle_spd, speedDataD);
+			break;
+		
+		case steering_ID:
+			strDataD[0] = RxData[1];
+			strDataD[1] = RxData[2];
+			break;
+		
+		case voltage_ID:
+			voltageDataD[0] =RxData[1];
+			break;
+		
+		case setting_ID:
+			settingDataD[0] =RxData[6];
+			break;
+	}
+	
 }
 
 void convertSpd(uint8_t *spd_val, uint8_t* buffer)
 {
-		// WRITE FORMULA FOR CONVERSION
+		uint32_t result = 0;
+    for (int i = 0; i < 4; i++) {
+        result += (buffer[i] << (8 * i));
+    }
+		
+		
 }
+
 /* USER CODE END 4 */
 
 /**
