@@ -53,22 +53,22 @@ CAN_RxHeaderTypeDef RxHeader;
 CAN_FilterTypeDef sFilterConfig;
 
 // MAIN CAN BUS RX ID'S
-const uint32_t speed_ID 		= 0x0000;
+const uint32_t speed_ID 		= 0x5B;
 const uint32_t steering_ID 	= 0x1A4;
 const uint32_t setting_ID 	= 0x4E;
 const uint32_t voltage_ID 	= 0xD;
 
 // MAIN CAN BUS RX BUFS
 uint8_t RxData  [8] = {0};
-
-uint8_t speedDataD  [8] = {0};
-uint8_t strDataD [8] = {0};
-uint8_t voltageDataD [8] = {0};
-uint8_t settingDataD [8] = {0};
-
+uint8_t tempArray [2] = {0};
 
 // Converted value variables
-uint8_t vehicle_spd = 0;	// km/h
+uint8_t 	vehicle_spd = 0;			// km/h
+uint16_t 	steering_pos = 0;			// degrees
+uint8_t		battery_voltage = 0;	// V*10
+uint8_t		eps_setting = 0;			// INT
+
+
 uint32_t mailbox;
 
 uint16_t MCU_Temp = 0;
@@ -93,9 +93,6 @@ static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan);
-
-void convertSpd(uint8_t *spd_val, uint8_t buffer[]);
-
 
 /* USER CODE END PFP */
 
@@ -309,7 +306,34 @@ static void MX_CAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN1_Init 2 */
+/*##-2- Configure the CAN Filter ###########################################*/
+	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterIdHigh = 0xFFFF;
+	sFilterConfig.FilterIdLow = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdLow = 0x0000;
+	sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 0;
 
+	if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
+	{
+	/* Filter configuration Error */
+	Error_Handler();
+	}
+
+	/*##-3- Start the CAN peripheral ###########################################*/
+	if (HAL_CAN_Start(&hcan1) != HAL_OK)
+	{
+	/* Start Error */
+	Error_Handler();
+	}
+  if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK){
+  /* Notification Error */
+  Error_Handler();
+  }
   /* USER CODE END CAN1_Init 2 */
 
 }
@@ -433,46 +457,37 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan)
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan)
 {
-
+	// MAIN CAN BUS RX
 	HAL_CAN_GetRxMessage(hcan,CAN_RX_FIFO0,&RxHeader,RxData);
 	
 	switch (RxHeader.StdId)
 	{
 		case speed_ID:
-			speedDataD[0] = RxData[0];
-			speedDataD[1] = RxData[1];
-			speedDataD[2] = RxData[2];
-			speedDataD[3] = RxData[3];
-			convertSpd(&vehicle_spd, speedDataD);
+			tempArray[0] = RxData[7];
+			vehicle_spd = tempArray[0];
 			break;
 		
 		case steering_ID:
-			strDataD[0] = RxData[1];
-			strDataD[1] = RxData[2];
+			tempArray[0] = RxData[1];
+			tempArray[1] = RxData[2];
+			steering_pos = ((tempArray[0] + (tempArray[1] << 8)) - 18000) / 100;
 			break;
 		
 		case voltage_ID:
-			voltageDataD[0] =RxData[1];
+			tempArray[0] = RxData[1];
+			battery_voltage = tempArray[0];
 			break;
 		
 		case setting_ID:
-			settingDataD[0] =RxData[6];
+			tempArray[0] =RxData[6];
+			eps_setting = tempArray[0];
 			break;
 	}
 	
 }
 
-void convertSpd(uint8_t *spd_val, uint8_t* buffer)
-{
-		uint32_t result = 0;
-    for (int i = 0; i < 4; i++) {
-        result += (buffer[i] << (8 * i));
-    }
-		
-		
-}
 
 /* USER CODE END 4 */
 
