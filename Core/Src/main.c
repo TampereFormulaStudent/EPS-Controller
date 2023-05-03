@@ -58,15 +58,36 @@ const uint32_t steering_ID 	= 0x1A4;
 const uint32_t setting_ID 	= 0x4E;
 const uint32_t voltage_ID 	= 0xD;
 
+
+// EPS CAN BUS Odrive specific ID's
+const uint32_t Axis0_Get_Error = 0x003;
+const uint32_t Axis0_Set_Input_Torque = 0x00e;
+const uint32_t Axis0_Set_Limits = 0x00f;
+const uint32_t Axis0_Get_Temperature = 0x015;
+const uint32_t Axis0_Clear_Errors = 0x018;
+const uint32_t Axis0_Get_Torques = 0x01c;
+const uint32_t Axis0_Get_Controller_Error = 0x01d;
+const uint32_t Axis0_Get_Encoder_Estimates = 0x009;
+
+
 // MAIN CAN BUS RX BUFS
-uint8_t RxData  [8] = {0};
-uint8_t tempArray [2] = {0};
+uint8_t mainRxData[8] = {0};
+uint8_t	epsRxData [8] = {0};
+uint8_t mainTempArray [2] = {0};
+uint8_t epsTempArray [4] = {0};
 
 // Converted value variables
 uint8_t 	vehicle_spd = 0;			// km/h
 uint16_t 	steering_pos = 0;			// degrees
 uint8_t		battery_voltage = 0;	// V*10
 uint8_t		eps_setting = 0;			// INT
+
+
+// Recieved values from Odrive
+uint32_t error_code = 0;
+uint32_t temp_fet = 0;
+uint32_t torque_estimate = 0;
+uint32_t encoder_estimate = 0;
 
 
 uint32_t mailbox;
@@ -370,7 +391,34 @@ static void MX_CAN2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN2_Init 2 */
+/*##-2- Configure the CAN Filter ###########################################*/
+	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterIdHigh = 0xFFFF;
+	sFilterConfig.FilterIdLow = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdLow = 0x0000;
+	sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO1;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 0;
 
+	if (HAL_CAN_ConfigFilter(&hcan2, &sFilterConfig) != HAL_OK)
+	{
+	/* Filter configuration Error */
+	Error_Handler();
+	}
+
+	/*##-3- Start the CAN peripheral ###########################################*/
+	if (HAL_CAN_Start(&hcan2) != HAL_OK)
+	{
+	/* Start Error */
+	Error_Handler();
+	}
+  if (HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK){
+  /* Notification Error */
+  Error_Handler();
+  }
   /* USER CODE END CAN2_Init 2 */
 
 }
@@ -457,36 +505,79 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan)
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan1)
 {
 	// MAIN CAN BUS RX
-	HAL_CAN_GetRxMessage(hcan,CAN_RX_FIFO0,&RxHeader,RxData);
+	HAL_CAN_GetRxMessage(hcan1,CAN_RX_FIFO0,&RxHeader,mainRxData);
 	
 	switch (RxHeader.StdId)
 	{
 		case speed_ID:
-			tempArray[0] = RxData[7];
-			vehicle_spd = tempArray[0];
+			mainTempArray[0] = mainRxData[7];
+			vehicle_spd = mainTempArray[0];
 			break;
 		
 		case steering_ID:
-			tempArray[0] = RxData[1];
-			tempArray[1] = RxData[2];
-			steering_pos = ((tempArray[0] + (tempArray[1] << 8)) - 18000) / 100;
+			mainTempArray[0] = mainRxData[1];
+			mainTempArray[1] = mainRxData[2];
+			steering_pos = ((mainTempArray[0] + (mainTempArray[1] << 8)) - 18000) / 100;
 			break;
 		
 		case voltage_ID:
-			tempArray[0] = RxData[1];
-			battery_voltage = tempArray[0];
+			mainTempArray[0] = mainRxData[1];
+			battery_voltage = mainTempArray[0];
 			break;
 		
 		case setting_ID:
-			tempArray[0] =RxData[6];
-			eps_setting = tempArray[0];
+			mainTempArray[0] =mainRxData[6];
+			eps_setting = mainTempArray[0];
 			break;
 	}
 	
 }
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan2)
+{
+	// EPS CAN BUS RX
+	HAL_CAN_GetRxMessage(hcan2,CAN_RX_FIFO1,&RxHeader,epsRxData);
+	// TODO CREATE NEW RXHEADER
+	switch (RxHeader.StdId)
+	{
+		case Axis0_Get_Error:
+			epsTempArray[0] = epsRxData[0];
+			epsTempArray[1] = epsRxData[1];
+			epsTempArray[2] = epsRxData[2];
+			epsTempArray[3] = epsRxData[3];
+			error_code = epsTempArray[0] + (epsTempArray[1] << 8) + (epsTempArray[2] << 16) + (epsTempArray[3] << 24);
+			break;
+		
+		case Axis0_Get_Temperature:
+			epsTempArray[0] = epsRxData[0];
+			epsTempArray[1] = epsRxData[1];
+			epsTempArray[2] = epsRxData[2];
+			epsTempArray[3] = epsRxData[3];
+			temp_fet = epsTempArray[0] + (epsTempArray[1] << 8) + (epsTempArray[2] << 16) + (epsTempArray[3] << 24);
+			break;
+		
+		case Axis0_Get_Torques:
+			epsTempArray[0] = epsRxData[4];
+			epsTempArray[1] = epsRxData[5];
+			epsTempArray[2] = epsRxData[6];
+			epsTempArray[3] = epsRxData[7];
+			torque_estimate = epsTempArray[0] + (epsTempArray[1] << 8) + (epsTempArray[2] << 16) + (epsTempArray[3] << 24);
+			break;
+		
+		case Axis0_Get_Encoder_Estimates:
+			epsTempArray[0] = epsRxData[0];
+			epsTempArray[1] = epsRxData[1];
+			epsTempArray[2] = epsRxData[2];
+			epsTempArray[3] = epsRxData[3];
+			encoder_estimate = epsTempArray[0] + (epsTempArray[1] << 8) + (epsTempArray[2] << 16) + (epsTempArray[3] << 24);
+			break;
+	}
+	
+}
+
 
 
 /* USER CODE END 4 */
