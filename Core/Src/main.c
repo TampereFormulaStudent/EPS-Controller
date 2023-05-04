@@ -31,6 +31,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define VOLTAGE_LIMIT 122
+#define STR_LOCK_LEFT	5
+#define STR_LOCK_RIGHT 195
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -99,8 +103,10 @@ uint32_t ADC_Buffer[2] = {0};
 uint16_t Tx_Delay = 10; //change this
 uint32_t ms = 0;
 
-uint16_t delay1 = 100;
+uint16_t delay1 = 100;	// internal temp counter delay
+uint16_t delay2 = 10;		// set EPS torque delay
 uint32_t ms1 = 0;
+uint32_t ms2 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,7 +119,12 @@ static void MX_ADC1_Init(void);
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan);
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan1);
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan2);
+
+void setEPSTorque();
+
+
 
 /* USER CODE END PFP */
 
@@ -125,16 +136,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		MCU_Temp = (uint16_t)((float)ADC_Buffer[1] * 0.322 - 282);	//get the mcu temperature from dma register
 		ms1 = 0;
 	}
-	/*
-  if(ms >= Tx_Delay)
+	
+  if(ms2 >= delay2)
   {
-
+		setEPSTorque();
   }
-	*/
+	
   if(htim->Instance==TIM4)
 	{
     ms++;
 		ms1++;
+		ms2++;
 	}
 }
 /* USER CODE END 0 */
@@ -505,6 +517,16 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void CanDataTx_EPS(uint16_t stdID, uint8_t bufSize)
+{
+	TxHeader.StdId = stdID;
+	TxHeader.IDE = CAN_ID_STD;
+	TxHeader.RTR = CAN_RTR_DATA;
+	TxHeader.DLC = bufSize;
+	TxHeader.TransmitGlobalTime = DISABLE;
+}
+
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan1)
 {
 	// MAIN CAN BUS RX
@@ -575,6 +597,30 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan2)
 			encoder_estimate = epsTempArray[0] + (epsTempArray[1] << 8) + (epsTempArray[2] << 16) + (epsTempArray[3] << 24);
 			break;
 	}
+	
+}
+
+void setEPSTorque() {
+	// TODO: MAKE PROPER SEND OVER CAN FUNCTION
+	uint8_t TxData [4] = {0};
+	CanDataTx_EPS(Axis0_Set_Input_Torque, sizeof(TxData));
+	
+	uint32_t straing_gauge_val = ADC_Buffer[0];
+	uint32_t torque = 0;
+	
+	if (!(battery_voltage < VOLTAGE_LIMIT)) {
+		torque = 0;
+	}
+	
+	if ( steering_pos < STR_LOCK_RIGHT ) {
+		torque = 0;
+	}
+	
+	if ( steering_pos < STR_LOCK_RIGHT ) {
+		torque = 0;
+	}
+	// TODO ADD torque calculation
+	HAL_CAN_AddTxMessage(&hcan2, &TxHeader, TxData, &mailbox);
 	
 }
 
