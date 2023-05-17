@@ -34,6 +34,7 @@
 #define VOLTAGE_LIMIT 122
 #define STR_LOCK_LEFT	5
 #define STR_LOCK_RIGHT 195
+#define GEAR_RATIO 4
 
 /* USER CODE END PD */
 
@@ -86,6 +87,8 @@ uint16_t 	steering_pos = 0;			// degrees
 uint8_t		battery_voltage = 0;	// V*10
 uint8_t		eps_setting = 0;			// INT
 
+//table for settings
+float setting[12] = {0,10,20,30,40,50,60,70,75,80,90,95};
 
 // Recieved values from Odrive
 uint32_t error_code = 0;
@@ -122,7 +125,7 @@ static void MX_TIM4_Init(void);
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef*hcan1);
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan2);
 
-void setEPSTorque();
+int setEPSTorque();
 
 
 
@@ -601,28 +604,31 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef*hcan2)
 	
 }
 
-void setEPSTorque() {
+int setEPSTorque() {
 	// TODO: MAKE PROPER SEND OVER CAN FUNCTION
 	uint8_t TxData [4] = {0};
 	CanDataTx_EPS(Axis0_Set_Input_Torque, sizeof(TxData));
 	
-	uint32_t straing_gauge_val = ADC_Buffer[0];
+	uint32_t strain_gauge_val = ADC_Buffer[0];	//convert to Nm
 	uint32_t torque = 0;
 	
 	if (!(battery_voltage < VOLTAGE_LIMIT)) {
 		torque = 0;
+		return torque;
 	}
 	
 	if ( steering_pos < STR_LOCK_RIGHT ) {
 		torque = 0;
+		return torque;
 	}
 	
 	if ( steering_pos < STR_LOCK_RIGHT ) {
 		torque = 0;
+		return torque;
 	}
-	// TODO ADD torque calculation
+	torque = setting[eps_setting] * (strain_gauge_val / GEAR_RATIO); //variables may need castin to float
 	HAL_CAN_AddTxMessage(&hcan2, &TxHeader, TxData, &mailbox);
-	
+	return torque;
 }
 
 
