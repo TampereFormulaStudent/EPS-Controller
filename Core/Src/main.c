@@ -186,6 +186,7 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	__HAL_RCC_CAN1_CLK_ENABLE();
+	__HAL_RCC_CAN2_CLK_ENABLE();
   HAL_TIM_Base_Start_IT(&htim4);
 	HAL_ADC_Start_DMA(&hadc1, ADC_Buffer, 2);
   /* USER CODE END 2 */
